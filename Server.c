@@ -143,7 +143,7 @@ void doprocessing (int sock) {
 	
 	arrStr = getArrayStr();
 	printf("start:\n%s\n\n", arrStr);
-	status = write(sock, arrStr, 30);
+	status = write(sock, arrStr, 40);
 	
 	if (status < 0) {
 		perror("ERROR writing to socket");
@@ -164,15 +164,21 @@ void setArray() {
 
 char* getArrayStr (){
 	int i, j, a=0;
-	char arrStr[30];
+	char arrStr[40];
 	
 	for(i = 0; i < 4; i++) {
-      for(j = 0; j < 4; j++) {
-         arrStr[a] = game->gameArr[i][j];
-		 a++;
-      }
-	  arrStr[a]= '\n';
-	  a++;
-   }
+          for(j = 0; j < 4; j++) {
+             arrStr[a] = game->gameArr[i][j];
+	     a++;
+	     if (j < 3){
+	       arrStr[a] = '\t';
+               a++;
+	     }
+          }
+          if (i < 3){
+	    arrStr[a]= '\n';
+	    a++;
+          }
+       }
    return arrStr;
 }
