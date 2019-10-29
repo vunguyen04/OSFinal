@@ -92,7 +92,7 @@ void main() {
 	  exit(1);
    }
    
-	printf("\nRecieved: %s\n",buffer);
+	printf("\nRecieved:\n%s\n",buffer);
     
    /* this closes the socket*/
    close(socketid);  
