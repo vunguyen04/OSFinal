@@ -28,11 +28,11 @@ typedef struct{
 shared_mem *game;
 
 //const char *ready = "ready";
-
+int pointArr[4][4];
 void doprocessing (int sock);
 void setArray ();
 char* getArrayStr ();
-
+void changeArray(int valueOfInput, int position, char* arrStr);
 int main( int argc, char *argv[] ) {
 	/*Establish Shared Memory*/
    key_t key = 123; /* shared memory key */ 
@@ -145,11 +145,63 @@ void doprocessing (int sock) {
 	printf("start:\n%s\n\n", arrStr);
 	status = write(sock, arrStr, 40);
 	
+
+        while (1){
+	//empty buffer and read input from user
+          bzero(buffer,256); 
+	  status = read(sock, buffer, 255);
+          if (status < 0){
+		perror("ERROR writing to socket");
+                exit(1);
+          }
+          //check for exit input x
+          int check = strncmp(buffer, "x", 1);
+          if (check == 0){
+	    printf("User Quit\n");
+            break;
+          }
+          int position = (97 -(int)buffer[0]) * (-1);
+          char temp = game->gameArr[position/4][position%4];
+          int valueOfInput = pointArr[position/4][position%4];
+          changeArray(valueOfInput, position, arrStr);
+	  status = write(sock, arrStr, 40);
+          printf("Input from user: %s %d\n", buffer, valueOfInput);
+          
+        }
 	if (status < 0) {
 		perror("ERROR writing to socket");
 		exit(1);
 	}
 }
+
+void changeArray(int valueOfInput,int position,char* arrStr){
+  int i, j, a = 0;
+  char temp = arrStr;
+  for(i = 0; i < 4; i++)
+  {
+    for (j = 0; j < 4; j++)
+    {
+      if (position == a)
+        if (valueOfInput >= 0)
+          arrStr[a] = '+';
+        else
+          arrStr[a] = '-';
+      a++;
+      if (j < 3){
+        arrStr[a] = '\t';
+        a++;
+        position++;
+      }      
+    }
+    if (i < 3){
+      arrStr[a] = '\n';
+      a++;
+      position++;
+    }
+  }
+  arrStr = temp;
+}    
+
 
 void setArray() {
    int count = 0, i, j;
@@ -169,6 +221,7 @@ char* getArrayStr (){
 	for(i = 0; i < 4; i++) {
           for(j = 0; j < 4; j++) {
              arrStr[a] = game->gameArr[i][j];
+             pointArr[i][j]= (rand() % 20) - 10;
 	     a++;
 	     if (j < 3){
 	       arrStr[a] = '\t';
