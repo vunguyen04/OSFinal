@@ -111,7 +111,7 @@ void main() {
         perror("ERROR while reading message from server");
         exit(1);
      }
-     printf("New:\n%s\n",buffer);
+     printf("Received:\n%s\n",buffer);
 
    }
    /* this closes the socket*/

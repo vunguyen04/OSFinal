@@ -169,8 +169,15 @@ void doprocessing (int sock) {
          //int valueOfInput = pointArr[position/4][position%4];
 
          value = changeArray(Selection, socketNumber);
-         arrStr = getArrayStr();
-         status = write(sock, arrStr, 40);
+         if(value == 99){
+            printf("No changes");
+            status = write(sock,"selection already made, try again", 255);
+         }
+         else{
+            arrStr = getArrayStr();
+            status = write(sock, arrStr, 40);
+         }
+         
          printf("Input from user: %s %d\n", buffer, value);
          printf("User score is now: %d\n", game->gameScores[socketNumber]);
         }
@@ -200,7 +207,7 @@ int changeArray(char Selection, int socketNumber){
       }
     }
   }
-  return 0;
+  return 99;
 }    
 
 
