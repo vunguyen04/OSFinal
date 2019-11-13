@@ -149,8 +149,8 @@ void doprocessing (int sock) {
 	printf("start:\n%s\n\n", arrStr);
 	status = write(sock, arrStr, 40);
 	
-
-      while (1){
+   //while(1){
+      while (1){ //while(gameStart)
          //empty buffer and read input from user
          bzero(buffer,256); 
          status = read(sock, buffer, 255);
@@ -177,15 +177,19 @@ void doprocessing (int sock) {
             arrStr = getArrayStr();
             status = write(sock, arrStr, 40);
          }
-         
+         if(status < 0) {
+            perror("ERROR writing to socket");
+            exit(1);
+         }
          printf("Input from user: %s %d\n", buffer, value);
          printf("User score is now: %d\n", game->gameScores[socketNumber]);
         }
-
-	if (status < 0) {
-		perror("ERROR writing to socket");
-		exit(1);
-	}
+   /* game->gameStart = 0;
+   print continue?
+      if yes -> restart, gameStart =1, let loop re-iterate
+      else -> return
+   */
+	
 }
 
 int changeArray(char Selection, int socketNumber){
