@@ -9,7 +9,7 @@
 #include<netinet/in.h>
 #include<netdb.h>
 
-#define PORTNUM  1109 /* the port number the server will listen to*/
+#define PORTNUM  1108 /* the port number the server will listen to*/
 #define DEFAULT_PROTOCOL 0  /*constant for default protocol*/
 #define ARR_SIZE 4
 
@@ -22,6 +22,7 @@ typedef struct{
 	int numSockets;
 	int numReady;
 	int gameStart;
+   int gameScores[5];
 } shared_mem;
 
 //Global Variable Declarations
@@ -32,7 +33,8 @@ int pointArr[4][4];
 void doprocessing (int sock);
 void setArray ();
 char* getArrayStr ();
-void changeArray(int valueOfInput, int position, char* arrStr);
+int changeArray(char Selection, int socketNumber);
+
 int main( int argc, char *argv[] ) {
 	/*Establish Shared Memory*/
    key_t key = 123; /* shared memory key */ 
@@ -109,7 +111,7 @@ int main( int argc, char *argv[] ) {
       
       if (pid == 0) {
          /* This is the client process */
-		 game->numSockets += 1;
+		   game->numSockets += 1;
          doprocessing(newsockfd);
 		 close(sockfd);
          exit(0);
@@ -123,7 +125,8 @@ int main( int argc, char *argv[] ) {
 
 
 void doprocessing (int sock) {
-	int status, i, j;
+	int status, i, j, value;
+   int socketNumber = (game->numSockets - 1); //use socket count as score index
 	char buffer[256], *arrStr;
 	
 	bzero(buffer,256);
@@ -146,60 +149,57 @@ void doprocessing (int sock) {
 	status = write(sock, arrStr, 40);
 	
 
-        while (1){
-	//empty buffer and read input from user
-          bzero(buffer,256); 
-	  status = read(sock, buffer, 255);
-          if (status < 0){
-		perror("ERROR writing to socket");
-                exit(1);
-          }
-          //check for exit input x
-          int check = strncmp(buffer, "x", 1);
-          if (check == 0){
-	    printf("User Quit\n");
+      while (1){
+         //empty buffer and read input from user
+         bzero(buffer,256); 
+         status = read(sock, buffer, 255);
+         if (status < 0){
+            perror("ERROR writing to socket");
+            exit(1);
+         }
+         //check for exit input x
+         int check = strncmp(buffer, "x", 1);
+         if (check == 0){
+            printf("User Quit\n");
             break;
-          }
-          int position = (97 -(int)buffer[0]) * (-1);
-          char temp = game->gameArr[position/4][position%4];
-          int valueOfInput = pointArr[position/4][position%4];
-          changeArray(valueOfInput, position, arrStr);
-	  status = write(sock, arrStr, 40);
-          printf("Input from user: %s %d\n", buffer, valueOfInput);
-          
+         }
+         //int position = ((int)buffer[0]) - 97));
+         char Selection = buffer[0];
+         //int valueOfInput = pointArr[position/4][position%4];
+
+         value = changeArray(Selection, socketNumber);
+         arrStr = getArrayStr();
+         status = write(sock, arrStr, 40);
+         printf("Input from user: %s %d\n", buffer, value);
+         printf("User score is now: %d\n", game->gameScores[socketNumber]);
         }
+
 	if (status < 0) {
 		perror("ERROR writing to socket");
 		exit(1);
 	}
 }
 
-void changeArray(int valueOfInput,int position,char* arrStr){
-  int i, j, a = 0;
-  char temp = arrStr;
+int changeArray(char Selection, int socketNumber){
+  int i, j, value;
+  
   for(i = 0; i < 4; i++)
   {
     for (j = 0; j < 4; j++)
     {
-      if (position == a)
-        if (valueOfInput >= 0)
-          arrStr[a] = '+';
-        else
-          arrStr[a] = '-';
-      a++;
-      if (j < 3){
-        arrStr[a] = '\t';
-        a++;
-        position++;
-      }      
-    }
-    if (i < 3){
-      arrStr[a] = '\n';
-      a++;
-      position++;
+      if (game->gameArr[i][j] == Selection){
+         
+         int value = pointArr[i][j];
+         game->gameScores[socketNumber] += value;
+         if(value > 0){
+            game->gameArr[i][j] = '+';
+         }
+         else{game->gameArr[i][j] = '-';}
+         return value;
+      }
     }
   }
-  arrStr = temp;
+  return 0;
 }    
 
 
@@ -209,6 +209,7 @@ void setArray() {
    for(i = 0; i < 4; i++) {
       for(j = 0; j < 4; j++) {
          game->gameArr[i][j] = 'a' + count;
+         pointArr[i][j]= (rand() % 20) - 10;
          count++;
       }
    }
@@ -220,8 +221,7 @@ char* getArrayStr (){
 	
 	for(i = 0; i < 4; i++) {
           for(j = 0; j < 4; j++) {
-             arrStr[a] = game->gameArr[i][j];
-             pointArr[i][j]= (rand() % 20) - 10;
+             arrStr[a] = game->gameArr[i][j];      
 	     a++;
 	     if (j < 3){
 	       arrStr[a] = '\t';

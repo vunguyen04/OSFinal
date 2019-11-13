@@ -13,7 +13,7 @@ on a machine. The name of this machine must be entered in the function gethostby
 #include<netinet/in.h>
 #include<netdb.h>
 
-#define PORTNUM  1109 /* the port number that the server is listening to*/
+#define PORTNUM  1108 /* the port number that the server is listening to*/
 #define DEFAULT_PROTOCOL 0  /*constant for default protocol*/
 #define h_addr h_addr_list[0]
 
