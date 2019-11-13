@@ -113,7 +113,7 @@ int main( int argc, char *argv[] ) {
          /* This is the client process */
 		   game->numSockets += 1;
          doprocessing(newsockfd);
-		 close(sockfd);
+		   close(sockfd);
          exit(0);
       }
       else {
@@ -142,6 +142,7 @@ void doprocessing (int sock) {
 		printf("Client is ready\n");
 		game->numReady += 1;
 	}
+
 	while (game->numReady < game->numSockets){}
 	
 	arrStr = getArrayStr();
@@ -205,7 +206,9 @@ int changeArray(char Selection, int socketNumber){
 
 void setArray() {
    int count = 0, i, j;
-   
+   for(i=0; i<5; i++){
+      game->gameScores[i] = 0;
+   }
    for(i = 0; i < 4; i++) {
       for(j = 0; j < 4; j++) {
          game->gameArr[i][j] = 'a' + count;
