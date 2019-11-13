@@ -39,7 +39,7 @@ void main() {
    /* before connecting the socket we need to set up the right values in the different fields of the structure server_addr 
    you can check the definition of this structure on your own*/
    
-    server = gethostbyname("osnode09"); 
+   server = gethostbyname("osnode02"); 
 
    if (server == NULL) {
       printf(" error trying to identify the machine where the server is running\n");
@@ -67,16 +67,16 @@ void main() {
       exit(-1);
     }
 	
-   char *message;
+   char message[256];
    printf("connected client socket to the server socket \n");
-   printf("Type 'ready' to continue.");
-   scanf("%s", &message);
-   
+   printf("Type 'ready' to continue: ");
+   scanf("%s", message);
+
    //sending ready message to server
    bzero(buffer, 256);
    //strncpy(buffer, "ready", 256);
-   status = write(socketid, "ready", 5);
- 
+  // status = write(socketid, "ready", 5);
+   status = write(socketid, message, 5);
    if (status < 0) {   
 	  printf("error while sending client message to server\n");
    }
@@ -92,8 +92,28 @@ void main() {
 	  exit(1);
    }
    
-	printf("\nRecieved:\n%s\n",buffer);
-    
+   printf("\nRecieved:\n%s\n",buffer);
+
+   
+   /*this code take input from user*/
+   while (1){
+     printf("Pick up your letter (a to p) & x to exit: ");
+     scanf("%s", message);
+     status  = write(socketid, message, 1);
+     int check = strncmp(message, "x", 1);
+     if (check == 0){
+       printf("User Exit\n");
+       break;
+     }
+     bzero(buffer, 256);
+     status = read(socketid, buffer, 255);
+     if (status < 0){
+        perror("ERROR while reading message from server");
+        exit(1);
+     }
+     printf("New:\n%s\n",buffer);
+
+   }
    /* this closes the socket*/
    close(socketid);  
 } 
