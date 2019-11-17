@@ -151,6 +151,7 @@ void doprocessing (int sock, int playerNum) {
 	   }
 		game->numReady += 1;
 	}
+
 	while (game->numReady < game->numSockets){}
 	
 	arrStr = getArrayStr();
@@ -225,7 +226,7 @@ int changeArray(char Selection, int socketNumber){
       }
     }
   }
-  return 0;
+  return 99;
 }    
 
 
