@@ -120,7 +120,34 @@ void main() {
       //check to see if the game is over
       if(buffer[0] == '1' || buffer[0] == '2'|| buffer[0] == '3' || buffer[0] == '4' || buffer[0] == '5'){
          printf("Player %s wins!\n", buffer);
-         break;
+         //break;
+         printf("Type 'ready' to continue: ");
+         scanf("%s", message);
+
+         //sending ready message to server
+         bzero(buffer, 256);
+         status = write(socketid, message, 5);
+         if (status < 0) {   
+	         printf("error while sending client message to server\n");
+         }
+
+         //server is telling the client what player they are
+         bzero(buffer, 256);
+         status = read(socketid, buffer, 255);
+         if (status < 0){
+            perror("ERROR while reading message from server");
+            exit(1);
+         }
+         printf("You are player %c\n", buffer[0]);
+   
+         //Server will be first printing the array
+         bzero(buffer,256);
+         status = read(socketid, buffer, 255);
+         if (status < 0) {
+	         perror("error while reading message from server");
+	         exit(1);
+         }
+         printf("\nRecieved:\n%s\n",buffer);
       }
       //if the game is not over, continue the game
       else {
