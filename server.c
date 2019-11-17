@@ -21,7 +21,7 @@ typedef struct{
 	char gameArr[4][4];
 	int numSockets;
 	int numReady;
-	int gameStart;
+	int gameStart[5];
    int gameScores[5];
    int endGame;
 } shared_mem;
@@ -113,7 +113,9 @@ int main( int argc, char *argv[] ) {
       
       if (pid == 0) { //This is the child process
 		   game->numSockets += 1;
+         game->gameStart[game->numSockets-1] = 1;
          doprocessing(newsockfd, game->numSockets);
+         game->numSockets -= 1;
          close(sockfd);
          exit(0);
       }
@@ -130,37 +132,42 @@ void doprocessing (int sock, int playerNum) {
    int socketNumber = (game->numSockets - 1); //use socket count as score index
 	char buffer[256], *arrStr;
 
-//-------------------------------------Player Ready-Up-------------------------------------------------------
    printf("Player %d has joined\n", playerNum);
-	bzero(buffer,256);
-	status= read(sock,buffer,255);
-		
-	if (status < 0) {
-		perror("ERROR reading from socket");
-		exit(1);
-	}
 
-	int ready = strncmp(buffer, "ready", 5);
-	if(ready == 0) {
-		printf("Player %d is ready\n", playerNum);
-      buffer[0] = playerNum + '0';
-      status = write(sock, buffer, 1);
-      if (status < 0) {
-		   perror("ERROR writing to socket");
+//-------------------------------------Player Ready-Up-------------------------------------------------------
+   while(1) {
+      while(!readyUp()){}
+
+	   status= read(sock,buffer,255);
+	   if (status < 0) {
+		   perror("ERROR reading from socket");
 		   exit(1);
 	   }
-		game->numReady += 1;
-	}
 
-	while (game->numReady < game->numSockets){}
-	
-	arrStr = getArrayStr();
-	printf("start:\n%s\n\n", arrStr);
-	status = write(sock, arrStr, 40);
+      int ready = strncmp(buffer, "ready", 5);
+      if(ready == 0) {
+         printf("Player %d is ready\n", playerNum);
+         buffer[0] = playerNum + '0';
+         status = write(sock, buffer, 1);
+         if (status < 0) {
+            perror("ERROR writing to socket");
+            exit(1);
+         }
+         game->numReady += 1;
+      }
+
+      while (game->numReady < game->numSockets){}
+      setArray();
+      game->endGame = 16;
+      bzero(buffer,256);
+      
+      arrStr = getArrayStr();
+      printf("start:\n%s\n\n", arrStr);
+      status = write(sock, arrStr, 40);
 //-----------------------------------------------------------------------------------------------------------
 
 //-------------------------------------Game Execution--------------------------------------------------------
-   while(1) {
+
       while (game->endGame > 0){
          bzero(buffer,256); //empty buffer and read input from user
          status = read(sock, buffer, 255);
@@ -201,7 +208,8 @@ void doprocessing (int sock, int playerNum) {
 		   perror("ERROR writing to socket");
 		   exit(1);
 	   }
-      break;
+      game->gameStart[playerNum -1] = 1;
+      game->numReady -= 1;
    }
 //-----------------------------------------------------------------------------------------------------------
 }
@@ -235,6 +243,7 @@ void setArray() {
 
    for(i = 0; i < 5; i++){
       game->gameScores[i] = 0;
+      game->gameStart[i] = 0;
    }
    
    for(i = 0; i < 4; i++) {
@@ -275,7 +284,7 @@ char findWinner() {
    max = game->gameScores[0];
    index = 0;
 
-   for(i = 1; i < 5; i++){
+   for(i = 1; i < game->numSockets; i++){
       if(game->gameScores[i] > max) {
          index = i;
          max = game->gameScores[i];
@@ -294,4 +303,14 @@ char findWinner() {
          break;
    }
    return ret;
+}
+
+int readyUp() {
+   int i, flag = 1;
+   for(i = 0; i < game->numSockets; i++) {
+      if(game->gameStart[i] == 0) {
+         return 0;
+      }
+   }
+   return 1;
 }
