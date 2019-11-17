@@ -9,7 +9,7 @@
 #include<netinet/in.h>
 #include<netdb.h>
 
-#define PORTNUM  1108 /* the port number the server will listen to*/
+#define PORTNUM  1107 /* the port number the server will listen to*/
 #define DEFAULT_PROTOCOL 0  /*constant for default protocol*/
 #define ARR_SIZE 4
 
@@ -23,21 +23,23 @@ typedef struct{
 	int numReady;
 	int gameStart;
    int gameScores[5];
+   int endGame;
 } shared_mem;
 
-//Global Variable Declarations
+//-------------------------------------Global Variable/Function Declarations---------------------------------
 shared_mem *game;
 
-//const char *ready = "ready";
 int pointArr[4][4];
-void doprocessing (int sock);
+void doprocessing (int sock, int playerNum);
 void setArray ();
 char* getArrayStr ();
 int changeArray(char Selection, int socketNumber);
+char findWinner();
+//-----------------------------------------------------------------------------------------------------------
 
 int main( int argc, char *argv[] ) {
-	/*Establish Shared Memory*/
-   key_t key = 123; /* shared memory key */ 
+//-------------------------------------Shared Memory Initialization------------------------------------------
+   key_t key = 123; 
    int   shmid; 
    char *shmadd;
    shmadd = (char *) 0; 
@@ -52,46 +54,48 @@ int main( int argc, char *argv[] ) {
 	{ 
 		perror ("shmat");
 		exit (0); 
-	} 
+   } 
+//-----------------------------------------------------------------------------------------------------------
+
 	game->numSockets = 0;
 	game->numReady = 0;
-	game->gameStart = 0;
+	//game->gameStart = 0;
+   game->endGame = 16;
+
 	setArray();
-	/*Shared Memory now setup*/
-	/*Setup Socket*/
+
+//-------------------------------------Socket Initialization--------------------------------------------------
    int sockfd, newsockfd, portno, clilen;
    char buffer[256];
    struct sockaddr_in serv_addr, cli_addr;
    int status, pid;
    
-   /* First call to socket() function */
-   sockfd = socket(AF_INET, SOCK_STREAM,DEFAULT_PROTOCOL );
+   sockfd = socket(AF_INET, SOCK_STREAM,DEFAULT_PROTOCOL ); //First call to socket() function
    
    if (sockfd < 0) {
       perror("ERROR opening socket");
       exit(1);
    }
    
-   /* Initialize socket structure */
-   bzero((char *) &serv_addr, sizeof(serv_addr));
+   bzero((char *) &serv_addr, sizeof(serv_addr)); //Initialize socket structure 
    portno = PORTNUM;
    
    serv_addr.sin_family = AF_INET;
    serv_addr.sin_addr.s_addr = INADDR_ANY;
    serv_addr.sin_port = htons(portno);
    
-   /* Now bind the host address using bind() call.*/
-   status =  bind(sockfd, (struct sockaddr *) &serv_addr, sizeof (serv_addr)); 
+   status =  bind(sockfd, (struct sockaddr *) &serv_addr, sizeof (serv_addr)); //Now bind the host address using bind() call
 
    if (status < 0) {
       perror("ERROR on binding");
       exit(1);
    }
-   
-   /* Now Server starts listening clients wanting to connect. No more than 5 clients allowed */
+
    listen(sockfd,5);
-   clilen = sizeof(cli_addr);
-   
+   clilen = sizeof(cli_addr); //Now Server starts listening clients wanting to connect. No more than 5 clients allowed 
+//-----------------------------------------------------------------------------------------------------------
+
+//-------------------------------------Socket Listening/Game Initialization----------------------------------
    while (1) {
       newsockfd = accept(sockfd, (struct sockaddr *) &cli_addr, &clilen);
 	  
@@ -100,35 +104,34 @@ int main( int argc, char *argv[] ) {
          exit(1);
       }
       
-	  //*****Threading may have to be added here****//
-      /* Create child process */
-      pid = fork();
+      pid = fork(); //Create child process, threading may have to be added here
 		
       if (pid < 0) {
          perror("ERROR on fork");
          exit(1);
       }
       
-      if (pid == 0) {
-         /* This is the client process */
+      if (pid == 0) { //This is the child process
 		   game->numSockets += 1;
-         doprocessing(newsockfd);
-		 close(sockfd);
+         doprocessing(newsockfd, game->numSockets);
+         close(sockfd);
          exit(0);
       }
       else {
          close(newsockfd);
       }
-		
-   } /* end of while */
+//-----------------------------------------------------------------------------------------------------------
+   } 
 }
 
 
-void doprocessing (int sock) {
+void doprocessing (int sock, int playerNum) {
 	int status, i, j, value;
    int socketNumber = (game->numSockets - 1); //use socket count as score index
 	char buffer[256], *arrStr;
-	
+
+//-------------------------------------Player Ready-Up-------------------------------------------------------
+   printf("Player %d has joined\n", playerNum);
 	bzero(buffer,256);
 	status= read(sock,buffer,255);
 		
@@ -139,7 +142,13 @@ void doprocessing (int sock) {
 
 	int ready = strncmp(buffer, "ready", 5);
 	if(ready == 0) {
-		printf("Client is ready\n");
+		printf("Player %d is ready\n", playerNum);
+      buffer[0] = playerNum + '0';
+      status = write(sock, buffer, 1);
+      if (status < 0) {
+		   perror("ERROR writing to socket");
+		   exit(1);
+	   }
 		game->numReady += 1;
 	}
 	while (game->numReady < game->numSockets){}
@@ -147,54 +156,71 @@ void doprocessing (int sock) {
 	arrStr = getArrayStr();
 	printf("start:\n%s\n\n", arrStr);
 	status = write(sock, arrStr, 40);
-	
+//-----------------------------------------------------------------------------------------------------------
 
-      while (1){
-         //empty buffer and read input from user
-         bzero(buffer,256); 
+//-------------------------------------Game Execution--------------------------------------------------------
+   while(1) {
+      while (game->endGame > 0){
+         bzero(buffer,256); //empty buffer and read input from user
          status = read(sock, buffer, 255);
          if (status < 0){
             perror("ERROR writing to socket");
             exit(1);
          }
-         //check for exit input x
-         int check = strncmp(buffer, "x", 1);
+         
+         int check = strncmp(buffer, "x", 1); //check for exit input x
          if (check == 0){
             printf("User Quit\n");
             break;
          }
-         //int position = ((int)buffer[0]) - 97));
+   
          char Selection = buffer[0];
-         //int valueOfInput = pointArr[position/4][position%4];
 
          value = changeArray(Selection, socketNumber);
-         arrStr = getArrayStr();
-         status = write(sock, arrStr, 40);
-         printf("Input from user: %s %d\n", buffer, value);
-         printf("User score is now: %d\n", game->gameScores[socketNumber]);
-        }
 
-	if (status < 0) {
-		perror("ERROR writing to socket");
-		exit(1);
-	}
+         printf("Input from player %d: %s %d\n", playerNum, buffer, value);
+         printf("Player %d's score is now: %d\n", playerNum, game->gameScores[socketNumber]);
+
+         if(game->endGame == 0){ //checking the end game condition and returning who won
+            buffer[0] = findWinner();
+            printf("Player %c wins!\n", buffer[0]);
+            break;
+         }
+         else { //if endgame is not met, continue the game
+            arrStr = getArrayStr();
+            status = write(sock, arrStr, 40);
+            if (status < 0) {
+		         perror("ERROR writing to socket");
+		         exit(1);
+	         }
+         }
+      }
+      status = write(sock, buffer, 1);
+      if (status < 0) {
+		   perror("ERROR writing to socket");
+		   exit(1);
+	   }
+      break;
+   }
+//-----------------------------------------------------------------------------------------------------------
 }
+
 
 int changeArray(char Selection, int socketNumber){
   int i, j, value;
   
-  for(i = 0; i < 4; i++)
-  {
-    for (j = 0; j < 4; j++)
-    {
+  for(i = 0; i < 4; i++) {
+    for (j = 0; j < 4; j++) {
       if (game->gameArr[i][j] == Selection){
-         
          int value = pointArr[i][j];
          game->gameScores[socketNumber] += value;
-         if(value > 0){
+         if(value > 0) {
             game->gameArr[i][j] = '+';
          }
-         else{game->gameArr[i][j] = '-';}
+         else {
+            game->gameArr[i][j] = '-';
+         }
+         game->endGame--;
          return value;
       }
     }
@@ -205,6 +231,10 @@ int changeArray(char Selection, int socketNumber){
 
 void setArray() {
    int count = 0, i, j;
+
+   for(i = 0; i < 5; i++){
+      game->gameScores[i] = 0;
+   }
    
    for(i = 0; i < 4; i++) {
       for(j = 0; j < 4; j++) {
@@ -214,6 +244,7 @@ void setArray() {
       }
    }
 }
+
 
 char* getArrayStr (){
 	int i, j, a=0;
@@ -234,4 +265,32 @@ char* getArrayStr (){
           }
        }
    return arrStr;
+}
+
+
+char findWinner() {
+   int i, max, index;
+   char ret;
+   max = game->gameScores[0];
+   index = 0;
+
+   for(i = 1; i < 5; i++){
+      if(game->gameScores[i] > max) {
+         index = i;
+         max = game->gameScores[i];
+      }
+   }
+   switch(index){
+      case 0: ret = '1';
+         break;
+      case 1: ret = '2';
+         break;
+      case 2: ret = '3';
+         break;
+      case 3: ret = '4';
+         break;
+      case 4: ret = '5';
+         break;
+   }
+   return ret;
 }

@@ -13,7 +13,7 @@ on a machine. The name of this machine must be entered in the function gethostby
 #include<netinet/in.h>
 #include<netdb.h>
 
-#define PORTNUM  1108 /* the port number that the server is listening to*/
+#define PORTNUM  1107 /* the port number that the server is listening to*/
 #define DEFAULT_PROTOCOL 0  /*constant for default protocol*/
 #define h_addr h_addr_list[0]
 
@@ -23,18 +23,18 @@ void main() {
    int  status;        /* error status holder*/
    char buffer[256];   /* the message buffer*/
    struct sockaddr_in serv_addr;
-
    struct hostent *server;
 
+//-------------------------------------Socket Initialization--------------------------------------------------
    /* this creates the socket*/
    socketid = socket (AF_INET, SOCK_STREAM, DEFAULT_PROTOCOL);
    
    if (socketid < 0) {
       printf( "error in creating client socket\n"); 
       exit (-1);
-    }
+   }
 
-    printf("created client socket successfully\n");
+   printf("created client socket successfully\n");
 
    /* before connecting the socket we need to set up the right values in the different fields of the structure server_addr 
    you can check the definition of this structure on your own*/
@@ -65,8 +65,10 @@ void main() {
    if (status < 0) {
       printf( "error in connecting client socket with server\n");
       exit(-1);
-    }
-	
+   }
+//-----------------------------------------------------------------------------------------------------------
+
+//-------------------------------------Player Readying Up----------------------------------------------------
    char message[256];
    printf("connected client socket to the server socket \n");
    printf("Type 'ready' to continue: ");
@@ -74,47 +76,59 @@ void main() {
 
    //sending ready message to server
    bzero(buffer, 256);
-   //strncpy(buffer, "ready", 256);
-  // status = write(socketid, "ready", 5);
    status = write(socketid, message, 5);
    if (status < 0) {   
-	  printf("error while sending client message to server\n");
+	   printf("error while sending client message to server\n");
    }
-   /* Read server response */
+
+   //server is telling the client what player they are
+   bzero(buffer, 256);
+      status = read(socketid, buffer, 255);
+      if (status < 0){
+         perror("ERROR while reading message from server");
+         exit(1);
+      }
+   printf("You are player %c", buffer[0]);
+   
+   //Server will be first printing the array
    bzero(buffer,256);
    status = read(socketid, buffer, 255);
-   
-   /* Upon successful completion, read() returns the number 
-   of bytes actually read from the file associated with fields.
-   This number is never greater than nbyte. Otherwise, -1 is returned. */
    if (status < 0) {
-	  perror("error while reading message from server");
-	  exit(1);
+	   perror("error while reading message from server");
+	   exit(1);
    }
    
    printf("\nRecieved:\n%s\n",buffer);
+//-----------------------------------------------------------------------------------------------------------
 
-   
-   /*this code take input from user*/
+//-------------------------------------Game Execution--------------------------------------------------------
    while (1){
-     printf("Pick up your letter (a to p) & x to exit: ");
-     scanf("%s", message);
-     status  = write(socketid, message, 1);
-     int check = strncmp(message, "x", 1);
-     if (check == 0){
-       printf("User Exit\n");
-       break;
-     }
-     bzero(buffer, 256);
-     status = read(socketid, buffer, 255);
-     if (status < 0){
-        perror("ERROR while reading message from server");
-        exit(1);
-     }
-     printf("New:\n%s\n",buffer);
-
+      printf("Pick up your letter (a to p) & x to exit: ");
+      scanf("%s", message);
+      status  = write(socketid, message, 1);
+      int check = strncmp(message, "x", 1);
+      if (check == 0){
+         printf("User Exit\n");
+         break;
+      }
+      bzero(buffer, 256);
+      status = read(socketid, buffer, 255);
+      if (status < 0){
+         perror("ERROR while reading message from server");
+         exit(1);
+      }
+      //check to see if the game is over
+      if(buffer[0] == '1' || buffer[0] == '2'|| buffer[0] == '3' || buffer[0] == '4' || buffer[0] == '5'){
+         printf("Player %s wins!\n", buffer);
+         break;
+      }
+      //if the game is not over, continue the game
+      else {
+         printf("New:\n%s\n",buffer);
+      }
    }
    /* this closes the socket*/
    close(socketid);  
+//-----------------------------------------------------------------------------------------------------------
 } 
 
