@@ -105,7 +105,15 @@ void main() {
    while (1){
       printf("Pick up your letter (a to p) & x to exit: ");
       scanf("%s", message);
-      status  = write(socketid, message, 1);
+      bool check = false;
+      while (check == false)
+      {
+	 if (message == "x" || (message > 96 && message < 113)
+	 {
+	    check = true;
+            status  = write(socketid, message, 1);
+	 }
+      }      
       int check = strncmp(message, "x", 1);
       if (check == 0){
          printf("User Exit\n");
