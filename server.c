@@ -33,7 +33,7 @@ int pointArr[4][4];
 void doprocessing (int sock, int playerNum);
 void setArray ();
 char* getArrayStr ();
-int changeArray(char Selection, int socketNumber);
+int changeArray(char Selection, int socketNumber, int* available);
 char findWinner();
 //-----------------------------------------------------------------------------------------------------------
 
@@ -183,25 +183,39 @@ void doprocessing (int sock, int playerNum) {
          }
    
          char Selection = buffer[0];
+         int available;
+         value = changeArray(Selection, socketNumber, &available);
 
-         value = changeArray(Selection, socketNumber);
+         if (available == 1){//check if letter is available
+           printf("Input from player %d: %s %d\n", playerNum, buffer, value);
+           printf("Player %d's score is now: %d\n", playerNum, game->gameScores[socketNumber]);
 
-         printf("Input from player %d: %s %d\n", playerNum, buffer, value);
-         printf("Player %d's score is now: %d\n", playerNum, game->gameScores[socketNumber]);
-
-         if(game->endGame == 0){ //checking the end game condition and returning who won
-            buffer[0] = findWinner();
-            printf("Player %c wins!\n", buffer[0]);
-            break;
+           if(game->endGame == 0){ //checking the end game condition and returning who won
+              buffer[0] = findWinner();
+              printf("Player %c wins!\n", buffer[0]);
+              break;
+           }
+           else { //if endgame is not met, continue the game
+              arrStr = getArrayStr();
+              char arrStr1[256] = "Keep Going\n";
+              strcat(arrStr1, arrStr);
+              status = write(sock,arrStr1, 51);
+              if (status < 0) {
+                perror("ERROR writing to socket");
+                exit(1);              
+              }
+           }
          }
-         else { //if endgame is not met, continue the game
-            arrStr = getArrayStr();
-            status = write(sock, arrStr, 40);
-            if (status < 0) {
-		         perror("ERROR writing to socket");
-		         exit(1);
-	         }
-         }
+         else{//if letter not available
+           arrStr = getArrayStr();
+           char arrStr1[256] = "Letter Has Been Chosen! Retry!\n";
+           strcat(arrStr1, arrStr);
+           status = write(sock, arrStr1, 71);
+           if (status < 0){
+             perror("ERROR writing to socket");
+             exit(1);
+           }
+         }      
       }
       status = write(sock, buffer, 1);
       if (status < 0) {
@@ -215,7 +229,7 @@ void doprocessing (int sock, int playerNum) {
 }
 
 
-int changeArray(char Selection, int socketNumber){
+int changeArray(char Selection, int socketNumber, int* available){
   int i, j, value;
   
   for(i = 0; i < 4; i++) {
@@ -230,10 +244,12 @@ int changeArray(char Selection, int socketNumber){
             game->gameArr[i][j] = '-';
          }
          game->endGame--;
+         *available = 1;
          return value;
       }
     }
   }
+  *available = 0;
   return 99;
 }    
 
